@@ -28,26 +28,18 @@ import scala.util.{ Failure, Success, Try }
 import scalaj.http.{ Http, HttpResponse }
 
 trait BagStoreComponent extends DebugEnhancedLogging {
+  this: HttpWorkerComponent =>
 
   val bagStore: BagStore
 
   trait BagStore {
     val baseUri: URI
 
-    private def copyStreamHttp(uri: String): OutputStreamProvider => Try[Unit] = { outputStreamProducer =>
-      val response = Http(uri).method("GET").exec {
-        case (OK_200, _, is) => IOUtils.copyLarge(is, outputStreamProducer())
-        case _ => // do nothing
-      }
-      if (response.isSuccess) Success(())
-      else Failure(HttpStatusException(s"Could not download $uri", HttpResponse(response.statusLine, response.code, response.headers)))
-    }
-
     def copyStream(bagId: UUID, path: Path): OutputStreamProvider => Try[Unit] = { outputStreamProducer =>
       for {
         f <- Try(URLEncoder.encode(path.toString, "UTF8"))
         uri <- Try(baseUri.resolve(s"bags/$bagId/$f"))
-        _ <- copyStreamHttp(uri.toString)(outputStreamProducer)
+        _ <- http.copyHttpStream(uri)(outputStreamProducer)
       } yield ()
     }
   }

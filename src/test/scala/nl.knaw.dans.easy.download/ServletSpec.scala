@@ -15,6 +15,7 @@
  */
 package nl.knaw.dans.easy.download
 
+import java.net.URI
 import java.nio.file.{ Path, Paths }
 import java.util.UUID
 
@@ -31,7 +32,8 @@ class ServletSpec extends TestSupportFixture with ServletFixture
 
   private val app = new EasyDownloadApp {
     // mocking at a low level to test the chain of error handling
-    override val bagStore: BagStore = mock[BagStore]
+
+    override val http: HttpWorker = mock[HttpWorker]
     override lazy val configuration: Configuration = new Configuration("", new PropertiesConfiguration() {
       addProperty("bag-store.url", "http://localhost:20110/")
     })
@@ -48,7 +50,7 @@ class ServletSpec extends TestSupportFixture with ServletFixture
 
   "get /:uuid/*" should "return file" in {
     val path = Paths.get("some.file")
-    (app.bagStore.copyStream(_: UUID, _: Path)) expects(uuid, path) once() returning (os => {
+    (app.http.copyHttpStream(_: URI)) expects new URI(s"http://localhost:20110/bags/$uuid/$path") once() returning (os => {
       os().write(s"content of $uuid/$path ")
       Success(())
     })

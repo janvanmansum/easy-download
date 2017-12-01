@@ -44,6 +44,7 @@ trait EasyDownloadApp extends AutoCloseable
 
 object EasyDownloadApp {
   def apply(conf: Configuration): EasyDownloadApp = new EasyDownloadApp {
+    override val http: HttpWorker = new HttpWorker{}
     override lazy val configuration: Configuration = conf
   }
 

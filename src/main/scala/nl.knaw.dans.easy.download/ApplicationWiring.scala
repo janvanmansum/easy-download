@@ -17,13 +17,12 @@ package nl.knaw.dans.easy.download
 
 import java.net.URI
 
-import nl.knaw.dans.easy.download.components.BagStoreComponent
-import nl.knaw.dans.lib.logging.DebugEnhancedLogging
+import nl.knaw.dans.easy.download.components.{ BagStoreComponent, HttpWorkerComponent }
 
 /**
  * Initializes and wires together the components of this application.
  */
-trait ApplicationWiring extends BagStoreComponent {
+trait ApplicationWiring extends BagStoreComponent with HttpWorkerComponent {
 
   /**
    * the application configuration
