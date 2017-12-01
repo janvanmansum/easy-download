@@ -23,21 +23,21 @@ import org.eclipse.jetty.http.HttpStatus._
 import org.scalamock.scalatest.MockFactory
 import org.scalatra.test.scalatest.ScalatraSuite
 
-import scala.util.{ Failure, Success }
-import scalaj.http.HttpResponse
+import scala.util.Success
 
 class ServletSpec extends TestSupportFixture with ServletFixture
   with ScalatraSuite
   with MockFactory {
 
-  private val wiring = new ApplicationWiring(new Configuration("", new PropertiesConfiguration() {
-    addProperty("bag-store.url", "http://localhost:20110/")
-  })) {
+  private val app = new EasyDownloadApp {
     // mocking at a low level to test the chain of error handling
     override val bagStore: BagStore = mock[BagStore]
+    override lazy val configuration: Configuration = new Configuration("", new PropertiesConfiguration() {
+      addProperty("bag-store.url", "http://localhost:20110/")
+    })
   }
   private val uuid = UUID.randomUUID()
-  addServlet(new EasyDownloadServlet(new EasyDownloadApp(wiring)), "/*")
+  addServlet(new EasyDownloadServlet(app), "/*")
 
   "get /" should "return the message that the service is running" in {
     get("/") {
@@ -48,7 +48,7 @@ class ServletSpec extends TestSupportFixture with ServletFixture
 
   "get /:uuid/*" should "return file" in {
     val path = Paths.get("some.file")
-    (wiring.bagStore.copyStream(_: UUID, _: Path)) expects(uuid, path) once() returning (os => {
+    (app.bagStore.copyStream(_: UUID, _: Path)) expects(uuid, path) once() returning (os => {
       os().write(s"content of $uuid/$path ")
       Success(())
     })
@@ -72,10 +72,5 @@ class ServletSpec extends TestSupportFixture with ServletFixture
       body shouldBe "file path is empty"
       status shouldBe BAD_REQUEST_400
     }
-  }
-
-  private def httpException(message: String, code: Int = 404) = {
-    val headers = Map[String, String]("Status" -> s"$code")
-    Failure(HttpStatusException(message, HttpResponse("", code, headers)))
   }
 }

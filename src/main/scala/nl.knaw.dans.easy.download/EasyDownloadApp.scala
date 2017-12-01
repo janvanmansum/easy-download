@@ -23,12 +23,12 @@ import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 
 import scala.util.{ Success, Try }
 
-class EasyDownloadApp(wiring: ApplicationWiring) extends AutoCloseable
-  with DebugEnhancedLogging {
+trait EasyDownloadApp extends AutoCloseable
+  with DebugEnhancedLogging with ApplicationWiring {
 
 
   def copyStream(bagId: UUID, path: Path, outputStreamProducer: () => OutputStream): Try[Unit] = {
-    wiring.bagStore.copyStream(bagId, path)(outputStreamProducer)
+    bagStore.copyStream(bagId, path)(outputStreamProducer)
   }
 
   def init(): Try[Unit] = {
@@ -40,4 +40,11 @@ class EasyDownloadApp(wiring: ApplicationWiring) extends AutoCloseable
   override def close(): Unit = {
 
   }
+}
+
+object EasyDownloadApp {
+  def apply(conf: Configuration): EasyDownloadApp = new EasyDownloadApp {
+    override lazy val configuration: Configuration = conf
+  }
+
 }

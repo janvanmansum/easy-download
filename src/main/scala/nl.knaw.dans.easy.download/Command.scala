@@ -32,7 +32,7 @@ object Command extends App with DebugEnhancedLogging {
   val commandLine: CommandLineOptions = new CommandLineOptions(args, configuration) {
     verify()
   }
-  val app = new EasyDownloadApp(new ApplicationWiring(configuration))
+  val app = EasyDownloadApp(configuration)
 
   managed(app)
     .acquireAndGet(app => {
