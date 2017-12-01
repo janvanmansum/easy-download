@@ -23,10 +23,9 @@ class CommandLineOptions(args: Array[String], configuration: Configuration) exte
   printedName = "easy-download"
   private val SUBCOMMAND_SEPARATOR = "---\n"
   val description: String = s"""Download files from the archive"""
-  val synopsis: String =
+  val synopsis: String = // not yet implemented: https://github.com/DANS-KNAW/easy-specs/blob/master/ark-download/ark-download.md#command-line-interface
     s"""
-       |  $printedName (synopsis of command line parameters)
-       |  $printedName (... possibly multiple lines for subcommands)""".stripMargin
+       |  $printedName run-service""".stripMargin
 
   version(s"$printedName v${ configuration.version }")
   banner(
@@ -39,11 +38,9 @@ class CommandLineOptions(args: Array[String], configuration: Configuration) exte
        |
        |Options:
        |""".stripMargin)
-  //val url = opt[String]("someOption", noshort = true, descr = "Description of the option", default = app.someProperty)
 
   val runService: Subcommand = new Subcommand("run-service") {
-    descr(
-      "Starts EASY Download as a daemon that services HTTP requests")
+    descr("Starts EASY Download as a daemon that services HTTP requests")
     footer(SUBCOMMAND_SEPARATOR)
   }
   addSubcommand(runService)

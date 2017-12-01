@@ -15,12 +15,21 @@
  */
 package nl.knaw.dans.easy.download
 
+import java.io.OutputStream
+import java.nio.file.Path
+import java.util.UUID
+
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
+
 import scala.util.{ Success, Try }
 
-class EasyDownloadApp(wiring: ApplicationWiring) extends AutoCloseable {
+class EasyDownloadApp(wiring: ApplicationWiring) extends AutoCloseable
+  with DebugEnhancedLogging {
 
 
-  // The application's API here. This is what is used by driver or entry-point objects.
+  def copyStream(bagId: UUID, path: Path, outputStreamProducer: () => OutputStream): Try[Unit] = {
+    wiring.bagStore.copyStream(bagId, path)(outputStreamProducer)
+  }
 
   def init(): Try[Unit] = {
     // Do any initialization of the application here. Typical examples are opening
