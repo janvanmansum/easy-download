@@ -25,7 +25,8 @@ trait AuthInfoComponent extends DebugEnhancedLogging {
         uri = baseUri.resolve(s"$bagId/$f")
         jsonString <- http.getHttpAsString(uri)
         authInfo <- Try(parse(jsonString).extract[FileItemAuthInfo]).recoverWith {
-          case t => Failure(new Exception(s"parse error [${t.getMessage}] for: $jsonString", t))
+          case t =>
+            Failure(new Exception(s"parse error [${t.getMessage}] for: $jsonString", t))
         }
       } yield authInfo
     }
