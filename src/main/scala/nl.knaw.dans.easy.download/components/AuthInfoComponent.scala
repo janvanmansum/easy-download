@@ -14,7 +14,7 @@ trait AuthInfoComponent extends DebugEnhancedLogging {
   this: HttpWorkerComponent =>
 
   val authInfo: AuthInfo
-  private implicit val jsonFormats: DefaultFormats.type = DefaultFormats
+  private implicit val jsonFormats: Formats = DefaultFormats
 
   trait AuthInfo {
     val baseUri: URI
@@ -25,7 +25,7 @@ trait AuthInfoComponent extends DebugEnhancedLogging {
         uri = baseUri.resolve(s"$bagId/$f")
         jsonString <- http.getHttpAsString(uri)
         authInfo <- Try(parse(jsonString).extract[FileItemAuthInfo]).recoverWith {
-          case t => Failure(new Exception(s"could not parse: $jsonString"))
+          case t => Failure(new Exception(s"parse error [${t.getMessage}] for: $jsonString", t))
         }
       } yield authInfo
     }

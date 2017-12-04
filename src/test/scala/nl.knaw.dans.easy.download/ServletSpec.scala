@@ -82,9 +82,17 @@ class ServletSpec extends TestSupportFixture with ServletFixture
 
   it should "report invalid authInfo results" in {
     val path = Paths.get("some.file")
-    expectAutInfo(path) returning Success(s"""{"nonsense":"some value"}""")
+    expectAutInfo(path) returning Success(
+      s"""{
+         |  "itemId":"$uuid/some.file",
+         |  "owner":"someone",
+         |  "dateAvailable":"1992-07-30",
+         |  "accessibleTo":"invaidValue",
+         |  "visibleTo":"ANONYMOUS"
+         |}""".stripMargin
+    )
     get(s"$uuid/some.file") {
-      // TODO capture logged message in AuthInfoSpec
+      // logged message shown in AuthInfoSpec
       body shouldBe s"not expected exception"
       status shouldBe INTERNAL_SERVER_ERROR_500
     }
