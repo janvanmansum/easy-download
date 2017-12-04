@@ -20,15 +20,26 @@ import java.nio.file.Path
 import java.util.UUID
 
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
+import org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404
 
-import scala.util.{ Success, Try }
+import scala.util.{ Failure, Success, Try }
+import scalaj.http.HttpResponse
 
 trait EasyDownloadApp extends AutoCloseable
   with DebugEnhancedLogging with ApplicationWiring {
 
 
   def copyStream(bagId: UUID, path: Path, outputStreamProducer: () => OutputStream): Try[Unit] = {
-    bagStore.copyStream(bagId, path)(outputStreamProducer)
+    for {
+      authInfo <- authInfo.getOutInfo(bagId, path)
+      _ <- authInfo.canSee(None)
+      _ <- authInfo.canDownload(None)
+      _ <- authInfo.noEmbargo
+      _ <- bagStore.copyStream(bagId, path)(outputStreamProducer).recoverWith {
+        case HttpStatusException(message, HttpResponse(_, NOT_FOUND_404, _)) =>
+          Failure(new Exception(s"invalid bag, file downloadable but not found: $path"))
+      }
+    } yield ()
   }
 
   def init(): Try[Unit] = {
@@ -43,9 +54,9 @@ trait EasyDownloadApp extends AutoCloseable
 }
 
 object EasyDownloadApp {
+
   def apply(conf: Configuration): EasyDownloadApp = new EasyDownloadApp {
-    override val http: HttpWorker = new HttpWorker{}
+    override val http: HttpWorker = new HttpWorker {}
     override lazy val configuration: Configuration = conf
   }
-
 }

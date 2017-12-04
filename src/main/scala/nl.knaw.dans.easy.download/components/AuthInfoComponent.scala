@@ -5,16 +5,16 @@ import java.nio.file.Path
 import java.util.UUID
 
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
-import org.json4s.{ DefaultFormats, _ }
 import org.json4s.native.JsonMethods._
+import org.json4s.{ DefaultFormats, _ }
 
-import scala.util.Try
+import scala.util.{ Failure, Try }
 
 trait AuthInfoComponent extends DebugEnhancedLogging {
   this: HttpWorkerComponent =>
 
   val authInfo: AuthInfo
-  implicit val jsonFormats: DefaultFormats.type = DefaultFormats
+  private implicit val jsonFormats: DefaultFormats.type = DefaultFormats
 
   trait AuthInfo {
     val baseUri: URI
@@ -24,7 +24,10 @@ trait AuthInfoComponent extends DebugEnhancedLogging {
         f <- Try(URLEncoder.encode(path.toString, "UTF8"))
         uri = baseUri.resolve(s"$bagId/$f")
         jsonString <- http.getHttpAsString(uri)
-      } yield parse(jsonString).extract[FileItemAuthInfo]
+        authInfo <- Try(parse(jsonString).extract[FileItemAuthInfo]).recoverWith {
+          case t => Failure(new Exception(s"could not parse: $jsonString"))
+        }
+      } yield authInfo
     }
   }
 }

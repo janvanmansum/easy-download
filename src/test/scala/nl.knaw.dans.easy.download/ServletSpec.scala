@@ -36,10 +36,20 @@ class ServletSpec extends TestSupportFixture with ServletFixture
     override val http: HttpWorker = mock[HttpWorker]
     override lazy val configuration: Configuration = new Configuration("", new PropertiesConfiguration() {
       addProperty("bag-store.url", "http://localhost:20110/")
+      addProperty("auth-info.url", "http://localhost:20170/")
     })
   }
   private val uuid = UUID.randomUUID()
   addServlet(new EasyDownloadServlet(app), "/*")
+
+  private def expectDownloadStream(path: Path) = {
+    (app.http.copyHttpStream(_: URI)) expects new URI(s"http://localhost:20110/bags/$uuid/$path") once()
+  }
+
+  private def expectAutInfo(path: Path) = {
+    (app.http.getHttpAsString(_: URI)) expects new URI(s"http://localhost:20170/$uuid/$path") once()
+  }
+
 
   "get /" should "return the message that the service is running" in {
     get("/") {
@@ -50,15 +60,67 @@ class ServletSpec extends TestSupportFixture with ServletFixture
 
   "get /:uuid/*" should "return file" in {
     val path = Paths.get("some.file")
-    (app.http.copyHttpStream(_: URI)) expects new URI(s"http://localhost:20110/bags/$uuid/$path") once() returning (os => {
+    expectDownloadStream(path) returning (os => {
       os().write(s"content of $uuid/$path ")
       Success(())
     })
-
+    expectAutInfo(path) returning Success(
+      s"""{
+         |  "itemId":"$uuid/some.file",
+         |  "owner":"someone",
+         |  "dateAvailable":"1992-07-30",
+         |  "accessibleTo":"ANONYMOUS",
+         |  "visibleTo":"ANONYMOUS"
+         |}""".stripMargin
+    )
     get(s"$uuid/some.file") {
+      body shouldBe s"content of $uuid/$path "
       status shouldBe OK_200
-      body shouldBe
-        s"content of $uuid/$path "
+    }
+  }
+
+
+  it should "report invalid authInfo results" in {
+    val path = Paths.get("some.file")
+    expectAutInfo(path) returning Success(s"""{"nonsense":"some value"}""")
+    get(s"$uuid/some.file") {
+      // TODO capture logged message in AuthInfoSpec
+      body shouldBe s"not expected exception"
+      status shouldBe INTERNAL_SERVER_ERROR_500
+    }
+  }
+
+  it should "report invisible as not found" in {
+    val path = Paths.get("some.file")
+    expectAutInfo(path) returning Success(
+      s"""{
+         |  "itemId":"$uuid/some.file",
+         |  "owner":"someone",
+         |  "dateAvailable":"1992-07-30",
+         |  "accessibleTo":"KNOWN",
+         |  "visibleTo":"KNOWN"
+         |}""".stripMargin
+    )
+    get(s"$uuid/some.file") {
+      body shouldBe s"$uuid/$path"
+      status shouldBe NOT_FOUND_404
+    }
+  }
+
+  it should "forbid download for not authenticated user" in {
+    val path = Paths.get("some.file")
+    expectAutInfo(path) returning Success(
+      s"""{
+         |  "itemId":"$uuid/some.file",
+         |  "owner":"someone",
+         |  "dateAvailable":"1992-07-30",
+         |  "accessibleTo":"KNOWN",
+         |  "visibleTo":"ANONYMOUS"
+         |}""".stripMargin
+    )
+    get(s"$uuid/some.file") {
+      body shouldBe s"download not allowed of: $uuid/$path"
+      status shouldBe FORBIDDEN_403
     }
   }
 

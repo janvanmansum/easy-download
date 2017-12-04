@@ -17,12 +17,14 @@ package nl.knaw.dans.easy.download
 
 import java.net.URI
 
-import nl.knaw.dans.easy.download.components.{ BagStoreComponent, HttpWorkerComponent }
+import nl.knaw.dans.easy.download.components.{ AuthInfoComponent, BagStoreComponent, HttpWorkerComponent }
 
 /**
  * Initializes and wires together the components of this application.
  */
-trait ApplicationWiring extends BagStoreComponent with HttpWorkerComponent {
+trait ApplicationWiring extends HttpWorkerComponent
+  with AuthInfoComponent
+  with BagStoreComponent {
 
   /**
    * the application configuration
@@ -31,5 +33,8 @@ trait ApplicationWiring extends BagStoreComponent with HttpWorkerComponent {
 
   override val bagStore: BagStore = new BagStore {
     override val baseUri: URI = new URI(configuration.properties.getString("bag-store.url"))
+  }
+  override val authInfo: AuthInfo = new AuthInfo {
+    override val baseUri: URI = new URI(configuration.properties.getString("auth-info.url"))
   }
 }
