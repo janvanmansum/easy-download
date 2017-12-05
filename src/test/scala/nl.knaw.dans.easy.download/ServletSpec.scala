@@ -39,7 +39,7 @@ class ServletSpec extends TestSupportFixture with ServletFixture
     override lazy val configuration: Configuration = new Configuration("", new PropertiesConfiguration() {
       addProperty("bag-store.url", "http://localhost:20110/")
       addProperty("auth-info.url", "http://localhost:20170/")
-      addProperty("ark-naan", naan)
+      addProperty("ark.name-assigning-authority-number", naan)
     })
   }
   addServlet(new EasyDownloadServlet(app), "/*")
@@ -60,7 +60,7 @@ class ServletSpec extends TestSupportFixture with ServletFixture
     }
   }
 
-  "get :uuid/*" should "return file" in {
+  s"get ark:/$naan/:uuid/*" should "return file" in {
     val path = Paths.get("some.file")
     expectDownloadStream(path) returning (os => {
       os().write(s"content of $uuid/$path ")
@@ -151,9 +151,9 @@ class ServletSpec extends TestSupportFixture with ServletFixture
   it should "report wrong naan" in {
     get(s"ark:/$naan$naan/$uuid/") {
       body shouldBe
-        s"""Requesting "GET /ark:/$naan$naan/$uuid/" on servlet "" but only have: <ul><li>GET /</li><li>GET /ark:/123456/:uuid/*</li></ul>
+        s"""Requesting "GET /ark:/$naan$naan/$uuid/" on servlet "" but only have: <ul><li>GET /</li><li>GET /ark:/$naan/:uuid/*</li></ul>
            |""".stripMargin
-      status shouldBe BAD_REQUEST_400
+      status shouldBe NOT_FOUND_404
     }
   }
 }
