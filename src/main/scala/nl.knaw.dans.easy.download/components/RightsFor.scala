@@ -15,29 +15,7 @@
  */
 package nl.knaw.dans.easy.download.components
 
-import java.net.{ URI, URLEncoder }
-import java.nio.file.Path
-import java.util.UUID
-
-import nl.knaw.dans.easy.download.OutputStreamProvider
-import nl.knaw.dans.lib.logging.DebugEnhancedLogging
-
-import scala.util.Try
-
-trait BagStoreComponent extends DebugEnhancedLogging {
-  this: HttpWorkerComponent =>
-
-  val bagStore: BagStore
-
-  trait BagStore {
-    val baseUri: URI
-
-    def copyStream(bagId: UUID, path: Path): OutputStreamProvider => Try[Unit] = { outputStreamProducer =>
-      for {
-        f <- Try(URLEncoder.encode(path.toString, "UTF8"))
-        uri <- Try(baseUri.resolve(s"bags/$bagId/$f"))
-        _ <- http.copyHttpStream(uri)(outputStreamProducer)
-      } yield ()
-    }
-  }
+object RightsFor extends Enumeration {
+  type Margin = Value
+  val NONE, KNOWN, ANONYMOUS, RESTRICTED_GROUP, RESTRICTED_REQUEST = Value
 }

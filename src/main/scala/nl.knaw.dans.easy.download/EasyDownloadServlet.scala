@@ -15,6 +15,7 @@
  */
 package nl.knaw.dans.easy.download
 
+import java.io.FileNotFoundException
 import java.nio.file.Paths
 import java.util.UUID
 
@@ -28,22 +29,25 @@ import scalaj.http.HttpResponse
 class EasyDownloadServlet(app: EasyDownloadApp) extends ScalatraServlet with DebugEnhancedLogging {
   logger.info("File Download Servlet running...")
 
+  private val naan = app.configuration.properties.getString("ark.name-assigning-authority-number")
+
   get("/") {
     contentType = "text/plain"
     Ok("EASY Download Service running...")
   }
 
-  get("/:uuid/*") {
+  get(s"/ark:/$naan/:uuid/*") {
     (getUUID, getPath) match {
       case (Success(_), Success(None)) => BadRequest("file path is empty")
       case (Success(uuid), Success(Some(path))) => respond(uuid, app.copyStream(uuid, path, () => response.outputStream))
       case (Failure(t), _) => BadRequest(t.getMessage)
-      case _ => InternalServerError("not expected exception")
+      case _ =>
+        InternalServerError("not expected exception")
     }
   }
 
-  private def getUUID = {
-    Try { UUID.fromString(params("uuid")) }
+  private def getUUID = Try {
+    UUID.fromString(params("uuid"))
   }
 
   private def getPath = Try {
@@ -56,6 +60,8 @@ class EasyDownloadServlet(app: EasyDownloadApp) extends ScalatraServlet with Deb
       case Failure(HttpStatusException(message, HttpResponse(_, SERVICE_UNAVAILABLE_503, _))) => ServiceUnavailable(message)
       case Failure(HttpStatusException(message, HttpResponse(_, REQUEST_TIMEOUT_408, _))) => RequestTimeout(message)
       case Failure(HttpStatusException(message, HttpResponse(_, NOT_FOUND_404, _))) => NotFound(message)
+      case Failure(NotAllowedException(message)) => Forbidden(message)
+      case Failure(t) if t.isInstanceOf[FileNotFoundException] => NotFound(t.getMessage)
       case Failure(t) =>
         logger.error(t.getMessage, t)
         InternalServerError("not expected exception")

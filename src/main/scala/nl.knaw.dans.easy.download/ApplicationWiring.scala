@@ -17,18 +17,25 @@ package nl.knaw.dans.easy.download
 
 import java.net.URI
 
-import nl.knaw.dans.easy.download.components.BagStoreComponent
-import nl.knaw.dans.lib.logging.DebugEnhancedLogging
+import nl.knaw.dans.easy.download.components.{ AuthInfoComponent, BagStoreComponent, HttpWorkerComponent }
 
 /**
  * Initializes and wires together the components of this application.
- *
- * @param configuration the application configuration
  */
-class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLogging
+trait ApplicationWiring extends HttpWorkerComponent
+  with AuthInfoComponent
   with BagStoreComponent {
+
+  /**
+   * the application configuration
+   */
+  val configuration: Configuration
+  override val http: HttpWorker = new HttpWorker {}
 
   override val bagStore: BagStore = new BagStore {
     override val baseUri: URI = new URI(configuration.properties.getString("bag-store.url"))
+  }
+  override val authInfo: AuthInfo = new AuthInfo {
+    override val baseUri: URI = new URI(configuration.properties.getString("auth-info.url"))
   }
 }
