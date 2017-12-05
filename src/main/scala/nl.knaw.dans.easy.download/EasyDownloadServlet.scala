@@ -29,12 +29,14 @@ import scalaj.http.HttpResponse
 class EasyDownloadServlet(app: EasyDownloadApp) extends ScalatraServlet with DebugEnhancedLogging {
   logger.info("File Download Servlet running...")
 
+  private val naan = app.configuration.properties.getString("ark.name-assigning-authority-number")
+
   get("/") {
     contentType = "text/plain"
     Ok("EASY Download Service running...")
   }
 
-  get("/:uuid/*") {
+  get(s"/ark:/$naan/:uuid/*") {
     (getUUID, getPath) match {
       case (Success(_), Success(None)) => BadRequest("file path is empty")
       case (Success(uuid), Success(Some(path))) => respond(uuid, app.copyStream(uuid, path, () => response.outputStream))
@@ -44,8 +46,8 @@ class EasyDownloadServlet(app: EasyDownloadApp) extends ScalatraServlet with Deb
     }
   }
 
-  private def getUUID = {
-    Try { UUID.fromString(params("uuid")) }
+  private def getUUID = Try {
+    UUID.fromString(params("uuid"))
   }
 
   private def getPath = Try {

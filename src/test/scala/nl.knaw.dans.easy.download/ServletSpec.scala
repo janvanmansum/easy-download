@@ -30,6 +30,8 @@ class ServletSpec extends TestSupportFixture with ServletFixture
   with ScalatraSuite
   with MockFactory {
 
+  private val uuid = UUID.randomUUID()
+  private val naan = "123456"
   private val app = new EasyDownloadApp {
     // mocking at a low level to test the chain of error handling
 
@@ -37,9 +39,9 @@ class ServletSpec extends TestSupportFixture with ServletFixture
     override lazy val configuration: Configuration = new Configuration("", new PropertiesConfiguration() {
       addProperty("bag-store.url", "http://localhost:20110/")
       addProperty("auth-info.url", "http://localhost:20170/")
+      addProperty("ark-naan", naan)
     })
   }
-  private val uuid = UUID.randomUUID()
   addServlet(new EasyDownloadServlet(app), "/*")
 
   private def expectDownloadStream(path: Path) = {
@@ -58,7 +60,7 @@ class ServletSpec extends TestSupportFixture with ServletFixture
     }
   }
 
-  "get /:uuid/*" should "return file" in {
+  "get :uuid/*" should "return file" in {
     val path = Paths.get("some.file")
     expectDownloadStream(path) returning (os => {
       os().write(s"content of $uuid/$path ")
@@ -73,7 +75,7 @@ class ServletSpec extends TestSupportFixture with ServletFixture
          |  "visibleTo":"ANONYMOUS"
          |}""".stripMargin
     )
-    get(s"$uuid/some.file") {
+    get(s"ark:/$naan/$uuid/some.file") {
       body shouldBe s"content of $uuid/$path "
       status shouldBe OK_200
     }
@@ -91,7 +93,7 @@ class ServletSpec extends TestSupportFixture with ServletFixture
          |  "visibleTo":"ANONYMOUS"
          |}""".stripMargin
     )
-    get(s"$uuid/some.file") {
+    get(s"ark:/$naan/$uuid/some.file") {
       // logged message shown in AuthInfoSpec
       body shouldBe s"not expected exception"
       status shouldBe INTERNAL_SERVER_ERROR_500
@@ -109,7 +111,7 @@ class ServletSpec extends TestSupportFixture with ServletFixture
          |  "visibleTo":"KNOWN"
          |}""".stripMargin
     )
-    get(s"$uuid/some.file") {
+    get(s"ark:/$naan/$uuid/some.file") {
       body shouldBe s"$uuid/$path"
       status shouldBe NOT_FOUND_404
     }
@@ -126,22 +128,31 @@ class ServletSpec extends TestSupportFixture with ServletFixture
          |  "visibleTo":"ANONYMOUS"
          |}""".stripMargin
     )
-    get(s"$uuid/some.file") {
+    get(s"ark:/$naan/$uuid/some.file") {
       body shouldBe s"download not allowed of: $uuid/$path"
       status shouldBe FORBIDDEN_403
     }
   }
 
   it should "report invalid uuid" in {
-    get("1-2-3-4-5-6/some.file") {
+    get(s"ark:/$naan/1-2-3-4-5-6/some.file") {
       body shouldBe "Invalid UUID string: 1-2-3-4-5-6"
       status shouldBe BAD_REQUEST_400
     }
   }
 
   it should "report missing path" in {
-    get(s"$uuid/") {
+    get(s"ark:/$naan/$uuid/") {
       body shouldBe "file path is empty"
+      status shouldBe BAD_REQUEST_400
+    }
+  }
+
+  it should "report wrong naan" in {
+    get(s"ark:/$naan$naan/$uuid/") {
+      body shouldBe
+        s"""Requesting "GET /ark:/$naan$naan/$uuid/" on servlet "" but only have: <ul><li>GET /</li><li>GET /ark:/123456/:uuid/*</li></ul>
+           |""".stripMargin
       status shouldBe BAD_REQUEST_400
     }
   }
