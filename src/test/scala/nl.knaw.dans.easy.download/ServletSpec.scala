@@ -129,7 +129,6 @@ class ServletSpec extends TestSupportFixture with ServletFixture
          |}""".stripMargin
     )
     get(s"ark:/$naan/$uuid/some.file") {
-      body shouldBe s"download not allowed of: $uuid/$path"
       status shouldBe FORBIDDEN_403
     }
   }
