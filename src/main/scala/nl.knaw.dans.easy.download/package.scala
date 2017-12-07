@@ -21,9 +21,9 @@ import java.nio.file.Path
 import com.google.common.net.UrlEscapers
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 
+import scala.collection.JavaConverters._
 import scala.util.{ Failure, Success, Try }
 import scalaj.http.HttpResponse
-import collection.JavaConverters._
 
 package object download extends DebugEnhancedLogging {
   private val pathEscaper = UrlEscapers.urlPathSegmentEscaper()
@@ -34,8 +34,22 @@ package object download extends DebugEnhancedLogging {
   case class HttpStatusException(msg: String, response: HttpResponse[String])
     extends Exception(s"$msg - ${ response.statusLine }, details: ${ response.body }")
 
-  case class NotAllowedException(message: String)
+  case class NotAccessibleException(message: String)
     extends Exception(message)
+
+  case class InvalidUserPasswordException(userName: String, cause: Throwable)
+    extends Exception(s"invalid credentials for $userName") {
+    logger.info(s"invalid credentials for $userName: ${ cause.getMessage }", cause)
+  }
+
+  case class AuthenticationNotAvailableException(cause: Throwable)
+    extends Exception(cause.getMessage, cause) {
+    logger.info(cause.getLocalizedMessage, cause)
+  }
+  case class AuthenticationTypeNotSupportedException(cause: Throwable)
+    extends Exception(cause.getMessage, cause) {
+    logger.info(cause.getLocalizedMessage, cause)
+  }
 
   def escapePath(path: Path): String = {
     path.asScala.map(_.toString).map(pathEscaper.escape).mkString("/")

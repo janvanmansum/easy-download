@@ -16,7 +16,6 @@
 package nl.knaw.dans.easy.download
 
 import java.nio.file.{ Files, Path, Paths }
-import java.util.UUID
 
 import org.apache.commons.io.FileUtils
 import org.scalatest.{ BeforeAndAfterEach, FlatSpec, Inside, Matchers }
@@ -29,7 +28,4 @@ trait TestSupportFixture extends FlatSpec with Matchers with Inside with BeforeA
     Files.createDirectories(path)
     path
   }
-
-  val uuidCentaur: UUID = UUID.fromString("9da0541a-d2c8-432e-8129-979a9830b427")
-  val uuidAnonymized: UUID = UUID.fromString("1afcc4e9-2130-46cc-8faf-2663e199b218")
 }

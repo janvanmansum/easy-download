@@ -22,6 +22,7 @@ import java.util.UUID
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.eclipse.jetty.http.HttpStatus.{ NOT_FOUND_404, REQUEST_TIMEOUT_408, SERVICE_UNAVAILABLE_503 }
 import org.scalatra._
+import org.scalatra.auth.strategy.BasicAuthStrategy.BasicAuthRequest
 
 import scala.util.{ Failure, Success, Try }
 import scalaj.http.HttpResponse
@@ -37,13 +38,22 @@ class EasyDownloadServlet(app: EasyDownloadApp) extends ScalatraServlet with Deb
   }
 
   get(s"/ark:/$naan/:uuid/*") {
-    (getUUID, getPath) match {
-      case (Success(_), Success(None)) => BadRequest("file path is empty")
-      case (Success(uuid), Success(Some(path))) => respond(uuid, app.copyStream(uuid, path, () => response.outputStream))
-      case (Failure(t), _) => BadRequest(t.getMessage)
+    (getUUID, getPath, getUser) match {
+      case (Success(uuid), Success(Some(path)), Success(user)) => respond(s"$uuid/$path", app.copyStream(uuid, path, user, () => response.outputStream))
+      case (Success(_), Success(None), _) => BadRequest("file path is empty")
+      case (_, _, Failure(InvalidUserPasswordException(_, _))) => Unauthorized()
+      case (_, _, Failure(AuthenticationNotAvailableException(_))) => ServiceUnavailable("Authentication service not available, try anonymous download")
+      case (_, _, Failure(AuthenticationTypeNotSupportedException(_))) => BadRequest("Only anonymous download or basic authentication supported")
+      case (Failure(t), _, _) => BadRequest(t.getMessage)
+      case (_, Failure(t), _) => BadRequest(t.getMessage)
       case _ =>
+        logger.error(s"not expected request: $params")
         InternalServerError("not expected exception")
     }
+  }
+
+  private def getUser = {
+    app.authenticate(new BasicAuthRequest(request))
   }
 
   private def getUUID = Try {
@@ -51,17 +61,17 @@ class EasyDownloadServlet(app: EasyDownloadApp) extends ScalatraServlet with Deb
   }
 
   private def getPath = Try {
-    multiParams("splat").find(_.trim != "").map(Paths.get(_))
+    multiParams("splat").find(!_.trim.isEmpty).map(Paths.get(_))
   }
 
-  private def respond(uuid: UUID, copyResult: Try[Unit]) = {
+  private def respond(path: String, copyResult: Try[Unit]) = {
     copyResult match {
       case Success(()) => Ok()
       case Failure(HttpStatusException(message, HttpResponse(_, SERVICE_UNAVAILABLE_503, _))) => ServiceUnavailable(message)
       case Failure(HttpStatusException(message, HttpResponse(_, REQUEST_TIMEOUT_408, _))) => RequestTimeout(message)
-      case Failure(HttpStatusException(message, HttpResponse(_, NOT_FOUND_404, _))) => NotFound(message)
-      case Failure(NotAllowedException(message)) => Forbidden()
-      case Failure(t) if t.isInstanceOf[FileNotFoundException] => NotFound(t.getMessage)
+      case Failure(HttpStatusException(_, HttpResponse(_, NOT_FOUND_404, _))) => NotFound(s"not found: $path")
+      case Failure(NotAccessibleException(message)) => Forbidden(message)
+      case Failure(_: FileNotFoundException) => NotFound(s"not found: $path")// in fact: not visible
       case Failure(t) =>
         logger.error(t.getMessage, t)
         InternalServerError("not expected exception")

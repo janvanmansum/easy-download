@@ -17,7 +17,7 @@ package nl.knaw.dans.easy.download.components
 
 import java.io.FileNotFoundException
 
-import nl.knaw.dans.easy.download.NotAllowedException
+import nl.knaw.dans.easy.download.NotAccessibleException
 import nl.knaw.dans.easy.download.components.RightsFor._
 import org.joda.time.DateTime
 
@@ -31,28 +31,45 @@ case class FileItemAuthInfo(itemId: String,
                            ) {
   private val dateAvailableMilis: Long = new DateTime(dateAvailable).getMillis
 
-  // TODO apply json type hints in AuthInfoComponent to change type of arguments
+  // TODO json type hints in AuthInfoComponent to replace argument type String by RightsFor
   private val visibleToValue = RightsFor.withName(visibleTo)
   private val accessibleToValue = RightsFor.withName(accessibleTo)
 
-  def canSee(user: Option[User]): Try[Unit] = {
-    (user, visibleToValue) match {
-      case (None, ANONYMOUS) => Success(())
-      case (None, _) => Failure(new FileNotFoundException(itemId))
-      case (Some(_), _) => Failure(new NotImplementedError())
-    }
+  def hasDownloadPermissionFor(user: Option[User]): Try[Unit] = {
+    for {
+      _ <- visibleTo(user)
+      _ <- accessibleTo(user)
+    } yield ()
   }
 
-  def canDownload(user: Option[User]): Try[Unit] = {
-    (user, accessibleToValue) match {
-      case (None, ANONYMOUS) => Success(())
-      case (None, _) => Failure(NotAllowedException(s"download not allowed of: $itemId"))
-      case (Some(_), _) => Failure(new NotImplementedError())
-    }
+  private def visibleTo(user: Option[User]): Try[Unit] = {
+    if (isOwnerOrArchivist(user)) Success(())
+    else if (!itemId.matches("[^/]+/data/.*"))// "[^/]+" matches the uuid of the bag
+      Failure(new FileNotFoundException(itemId))
+    else noEmbargo(visibleToValue).flatMap(_ =>
+      if (visibleToValue == ANONYMOUS || (visibleToValue == KNOWN && user.isDefined))
+        Success(())
+      else Failure(new FileNotFoundException(itemId))
+    )
   }
 
-  def noEmbargo: Try[Unit] = {
+  private def accessibleTo(user: Option[User]): Try[Unit] = {
+    if (isOwnerOrArchivist(user)) Success(())
+    else noEmbargo(accessibleToValue).flatMap(_ =>
+      if (accessibleToValue == ANONYMOUS) Success(())
+      else if (accessibleToValue == KNOWN)
+             if (user.isDefined) Success(())
+             else Failure(NotAccessibleException(s"Please login to download: $itemId"))
+      else Failure(NotAccessibleException(s"Download not allowed of: $itemId")) // might require group/permission
+    )
+  }
+
+  private def isOwnerOrArchivist(user: Option[User]): Boolean = {
+    user.exists(user => user.isAdmin || user.isArchivist || user.id == owner)
+  }
+
+  def noEmbargo(rightsFor: RightsFor.Value): Try[Unit] = {
     if (dateAvailableMilis <= DateTime.now.getMillis) Success(())
-    else Failure(NotAllowedException(s"download becomes available on $dateAvailableMilis [$itemId]"))
+    else Failure(NotAccessibleException(s"Download becomes available on $dateAvailable [$itemId]"))
   }
 }

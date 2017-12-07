@@ -19,8 +19,10 @@ import java.io.OutputStream
 import java.nio.file.Path
 import java.util.UUID
 
+import nl.knaw.dans.easy.download.components.User
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404
+import org.scalatra.auth.strategy.BasicAuthStrategy.BasicAuthRequest
 
 import scala.util.{ Failure, Success, Try }
 import scalaj.http.HttpResponse
@@ -28,13 +30,12 @@ import scalaj.http.HttpResponse
 trait EasyDownloadApp extends AutoCloseable
   with DebugEnhancedLogging with ApplicationWiring {
 
+  def authenticate(authRequest: BasicAuthRequest): Try[Option[User]] = authentication.authenticate(authRequest)
 
-  def copyStream(bagId: UUID, path: Path, outputStreamProducer: () => OutputStream): Try[Unit] = {
+  def copyStream(bagId: UUID, path: Path, user: Option[User], outputStreamProducer: () => OutputStream): Try[Unit] = {
     for {
-      authInfo <- authInfo.getOutInfo(bagId, path)
-      _ <- authInfo.canSee(None)
-      _ <- authInfo.canDownload(None)
-      _ <- authInfo.noEmbargo
+      fileItem <- authInfo.getFileItem(bagId, path)
+      _ <- fileItem.hasDownloadPermissionFor(user)
       _ <- bagStore.copyStream(bagId, path)(outputStreamProducer).recoverWith {
         case HttpStatusException(message, HttpResponse(_, NOT_FOUND_404, _)) =>
           Failure(new Exception(s"invalid bag, file downloadable but not found: $path"))
