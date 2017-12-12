@@ -22,12 +22,13 @@ import java.util.UUID
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.eclipse.jetty.http.HttpStatus._
+import org.scalamock.function.MockFunction0
 import org.scalamock.scalatest.MockFactory
 import org.scalatra.auth.strategy.BasicAuthStrategy.BasicAuthRequest
 import org.scalatra.test.scalatest.ScalatraSuite
 
 import scala.util.Success
-import org.slf4j.{Logger => Underlying}
+import org.slf4j.{ Logger => Underlying }
 
 class ServletSpec extends TestSupportFixture with ServletFixture
   with ScalatraSuite
@@ -47,7 +48,7 @@ class ServletSpec extends TestSupportFixture with ServletFixture
     })
   }
   private val mockedLogger = mock[Underlying]
-  (mockedLogger.isInfoEnabled: () => Boolean) expects() anyNumberOfTimes() returning true
+  ((() => mockedLogger.isInfoEnabled()): MockFunction0[Boolean]) expects() anyNumberOfTimes() returning true
   (mockedLogger.info(_ : String)) expects "File Download Servlet running..."
 
   addServlet(new EasyDownloadServlet(app){
@@ -95,7 +96,6 @@ class ServletSpec extends TestSupportFixture with ServletFixture
     }
   }
 
-
   it should "report invalid authorisation results" in {
     val path = Paths.get("some.file")
     val expectedHttpResponse = s"""{
@@ -107,7 +107,7 @@ class ServletSpec extends TestSupportFixture with ServletFixture
        |}""".stripMargin
     expectAuthorisation(path) returning Success(expectedHttpResponse)
     expectAuthentication() returning Success(None)
-    (mockedLogger.isErrorEnabled: () => Boolean) expects() anyNumberOfTimes() returning true
+    ((() => mockedLogger.isErrorEnabled()): MockFunction0[Boolean]) expects() anyNumberOfTimes() returning true
     (mockedLogger.error(_ : String, _: Throwable)) expects (s"Parse error [No value found for 'invalidValue'] for: $expectedHttpResponse",*)
     get(s"ark:/$naan/$uuid/some.file") {
       // logged message shown in AuthorisationSpec
@@ -180,7 +180,7 @@ class ServletSpec extends TestSupportFixture with ServletFixture
   it should "report wrong naan" in {
     get(s"ark:/$naan$naan/$uuid/") {
       body shouldBe
-        s"""Requesting "GET /ark:/$naan$naan/$uuid/" on servlet "" but only have: <ul><li>GET /</li><li>GET /ark:/$naan/:uuid/*</li></ul>
+        s"""Requesting "GET \\/ark:\\/$naan$naan\\/$uuid\\/" on servlet "" but only have: <ul><li>GET /</li><li>GET /ark:/$naan/:uuid/*</li></ul>
            |""".stripMargin
       status shouldBe NOT_FOUND_404
     }
