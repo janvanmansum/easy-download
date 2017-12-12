@@ -19,6 +19,7 @@ import java.net.URI
 import java.nio.file.{ Path, Paths }
 import java.util.UUID
 
+import com.typesafe.scalalogging.Logger
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.eclipse.jetty.http.HttpStatus._
 import org.scalamock.scalatest.MockFactory
@@ -26,6 +27,7 @@ import org.scalatra.auth.strategy.BasicAuthStrategy.BasicAuthRequest
 import org.scalatra.test.scalatest.ScalatraSuite
 
 import scala.util.Success
+import org.slf4j.{Logger => Underlying}
 
 class ServletSpec extends TestSupportFixture with ServletFixture
   with ScalatraSuite
@@ -39,19 +41,24 @@ class ServletSpec extends TestSupportFixture with ServletFixture
     override val http: HttpWorker = mock[HttpWorker]
     override val authentication: Authentication = mock[Authentication]
     override lazy val configuration: Configuration = new Configuration("", new PropertiesConfiguration() {
-      setDelimiterParsingDisabled(true)
       addProperty("bag-store.url", "http://localhost:20110/")
       addProperty("auth-info.url", "http://localhost:20170/")
       addProperty("ark.name-assigning-authority-number", naan)
     })
   }
-  addServlet(new EasyDownloadServlet(app), "/*")
+  private val mockedLogger = mock[Underlying]
+  (mockedLogger.isInfoEnabled: () => Boolean) expects() anyNumberOfTimes() returning true
+  (mockedLogger.info(_ : String)) expects "File Download Servlet running..."
+
+  addServlet(new EasyDownloadServlet(app){
+    override lazy val logger: Logger = Logger(mockedLogger)
+  }, "/*")
 
   private def expectDownloadStream(path: Path) = {
     (app.http.copyHttpStream(_: URI)) expects new URI(s"http://localhost:20110/bags/$uuid/$path") once()
   }
 
-  private def expectAuthInfo(path: Path) = {
+  private def expectAuthorisation(path: Path) = {
     (app.http.getHttpAsString(_: URI)) expects new URI(s"http://localhost:20170/$uuid/$path") once()
   }
 
@@ -73,7 +80,7 @@ class ServletSpec extends TestSupportFixture with ServletFixture
       os().write(s"content of $uuid/$path ")
       Success(())
     })
-    expectAuthInfo(path) returning Success(
+    expectAuthorisation(path) returning Success(
       s"""{
          |  "itemId":"$uuid/$path",
          |  "owner":"someone",
@@ -89,20 +96,21 @@ class ServletSpec extends TestSupportFixture with ServletFixture
   }
 
 
-  it should "report invalid authInfo results" in {
+  it should "report invalid authorisation results" in {
     val path = Paths.get("some.file")
-    expectAuthInfo(path) returning Success(
-      s"""{
-         |  "itemId":"$uuid/some.file",
-         |  "owner":"someone",
-         |  "dateAvailable":"1992-07-30",
-         |  "accessibleTo":"invaidValue",
-         |  "visibleTo":"ANONYMOUS"
-         |}""".stripMargin
-    )
+    val expectedHttpResponse = s"""{
+       |  "itemId":"$uuid/$path",
+       |  "owner":"someone",
+       |  "dateAvailable":"1992-07-30",
+       |  "accessibleTo":"invalidValue",
+       |  "visibleTo":"ANONYMOUS"
+       |}""".stripMargin
+    expectAuthorisation(path) returning Success(expectedHttpResponse)
     expectAuthentication() returning Success(None)
+    (mockedLogger.isErrorEnabled: () => Boolean) expects() anyNumberOfTimes() returning true
+    (mockedLogger.error(_ : String, _: Throwable)) expects (s"Parse error [No value found for 'invalidValue'] for: $expectedHttpResponse",*)
     get(s"ark:/$naan/$uuid/some.file") {
-      // logged message shown in AuthInfoSpec
+      // logged message shown in AuthorisationSpec
       body shouldBe s"not expected exception"
       status shouldBe INTERNAL_SERVER_ERROR_500
     }
@@ -111,7 +119,7 @@ class ServletSpec extends TestSupportFixture with ServletFixture
   it should "report invisible as not found" in {
     val path = Paths.get("some.file")
     expectAuthentication() returning Success(None)
-    expectAuthInfo(path) returning Success(
+    expectAuthorisation(path) returning Success(
       s"""{
          |  "itemId":"$uuid/some.file",
          |  "owner":"someone",
@@ -129,7 +137,7 @@ class ServletSpec extends TestSupportFixture with ServletFixture
   it should "forbid download for not authenticated user" in {
     val path = Paths.get("data/some.file")
     expectAuthentication() returning Success(None)
-    expectAuthInfo(path) returning Success(
+    expectAuthorisation(path) returning Success(
       s"""{
          |  "itemId":"$uuid/$path",
          |  "owner":"someone",
@@ -148,6 +156,15 @@ class ServletSpec extends TestSupportFixture with ServletFixture
     expectAuthentication() returning Success(None)
     get(s"ark:/$naan/1-2-3-4-5-6/some.file") {
       body shouldBe "Invalid UUID string: 1-2-3-4-5-6"
+      status shouldBe BAD_REQUEST_400
+    }
+  }
+
+  it should "report invalid path (can't test with scalatra)" ignore {
+    // Scalatra throws IllegalArgumentException on URI before calling EasyDownloadServlet.get
+    // this way we can't test exceptions thrown by Paths.get in EasyDownloadServlet.getPath
+    get(s"ark:/$naan/$uuid/s\0me.file") {
+      body shouldBe "Illegal character in path at index 73: http://localhost:50327/ark:/123456/3b6694ec-fb4c-4a49-9a37-8976616a45dc/s\0me.file"
       status shouldBe BAD_REQUEST_400
     }
   }

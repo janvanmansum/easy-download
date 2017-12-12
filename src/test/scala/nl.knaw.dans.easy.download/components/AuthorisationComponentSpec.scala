@@ -15,22 +15,21 @@
  */
 package nl.knaw.dans.easy.download.components
 
-import java.lang.reflect.InvocationTargetException
 import java.net.URI
 import java.nio.file.{ Path, Paths }
 import java.util.UUID
 
 import nl.knaw.dans.easy.download.TestSupportFixture
-import org.json4s.MappingException
+import nl.knaw.dans.easy.download.components.RightsFor._
 import org.scalamock.scalatest.MockFactory
 
 import scala.util.{ Failure, Success }
 
-class AuthInfoComponentSpec extends TestSupportFixture with MockFactory {
-  private class TestWiring extends AuthInfoComponent
+class AuthorisationComponentSpec extends TestSupportFixture with MockFactory {
+  private class TestWiring extends AuthorisationComponent
     with HttpWorkerComponent {
     override val http: HttpWorker = mock[HttpWorker]
-    override val authInfo: AuthInfo = new AuthInfo {
+    override val authorisation: Authorisation = new Authorisation {
       override val baseUri: URI = new URI("http://localhost:20170/")
     }
   }
@@ -38,7 +37,7 @@ class AuthInfoComponentSpec extends TestSupportFixture with MockFactory {
   private val uuid = UUID.randomUUID()
 
   private def expectAutInfoRequest(path: Path) = {
-    (wiring.http.getHttpAsString(_: URI)) expects wiring.authInfo.baseUri.resolve(s"$uuid/$path") once()
+    (wiring.http.getHttpAsString(_: URI)) expects wiring.authorisation.baseUri.resolve(s"$uuid/$path") once()
   }
 
   "getOutInfo" should "parse the service response" in {
@@ -52,7 +51,9 @@ class AuthInfoComponentSpec extends TestSupportFixture with MockFactory {
          |  "visibleTo":"ANONYMOUS"
          |}""".stripMargin
     )
-    wiring.authInfo.getFileItem(uuid, path) shouldBe a[Success[_]]
+    wiring.authorisation.getFileItem(uuid, path) should matchPattern {
+      case Success(FileItem(_, "someone", _, KNOWN, ANONYMOUS)) =>
+    }
   }
 
   it should "complain about invalid service response" in {
@@ -60,39 +61,10 @@ class AuthInfoComponentSpec extends TestSupportFixture with MockFactory {
     expectAutInfoRequest(path) returning Success(
       s"""{"nonsense":"value"}"""
     )
-    inside(wiring.authInfo.getFileItem(uuid, path)) {
+    inside(wiring.authorisation.getFileItem(uuid, path)) {
       case Failure(t) => t should have message
         """parse error [No usable value for itemId
           |Did not find value which can be converted into java.lang.String] for: {"nonsense":"value"}""".stripMargin
-    }
-  }
-
-  it should "stumble over invalid accessibleTo" in {
-    val path = Paths.get("some.file")
-    expectAutInfoRequest(path) returning Success(
-      s"""{
-         |  "itemId":"$uuid/some.file",
-         |  "owner":"someone",
-         |  "dateAvailable":"1992-07-30",
-         |  "accessibleTo":"invalidValue",
-         |  "visibleTo":"ANONYMOUS"
-         |}""".stripMargin
-    )
-    inside(wiring.authInfo.getFileItem(uuid, path)) {
-      case Failure(t) =>
-        t.getMessage shouldBe
-          s"""parse error [unknown error] for: {
-             |  "itemId":"$uuid/some.file",
-             |  "owner":"someone",
-             |  "dateAvailable":"1992-07-30",
-             |  "accessibleTo":"invalidValue",
-             |  "visibleTo":"ANONYMOUS"
-             |}""".stripMargin
-        // json type hints might result in clearer error messages, see TODO in FileItemAuthInfo
-        t.getCause shouldBe a[MappingException]
-        t.getCause.getCause shouldBe a[InvocationTargetException]
-        t.getCause.getCause.getCause shouldBe a[NoSuchElementException]
-        t.getCause.getCause.getCause.getMessage shouldBe "No value found for 'invalidValue'"
     }
   }
 }

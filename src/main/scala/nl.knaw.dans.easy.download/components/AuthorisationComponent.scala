@@ -21,29 +21,27 @@ import java.util.UUID
 
 import nl.knaw.dans.easy.download.escapePath
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
-import org.json4s.native.JsonMethods._
 import org.json4s.{ DefaultFormats, _ }
 
-import scala.util.{ Failure, Try }
+import scala.util.Try
 
-trait AuthInfoComponent extends DebugEnhancedLogging {
+trait AuthorisationComponent extends DebugEnhancedLogging {
   this: HttpWorkerComponent =>
 
-  val authInfo: AuthInfo
-  private implicit val jsonFormats: Formats = DefaultFormats
+  val authorisation: Authorisation
 
-  trait AuthInfo {
+  trait Authorisation {
     val baseUri: URI
 
-    def getFileItem(bagId: UUID, path: Path): Try[FileItemAuthInfo] = {
+    private implicit val jsonFormats: Formats = DefaultFormats
+
+    def getFileItem(bagId: UUID, path: Path): Try[FileItem] = {
       for {
         f <- Try(escapePath(path))
         uri = baseUri.resolve(s"$bagId/$f")
         jsonString <- http.getHttpAsString(uri)
-        authInfo <- Try(parse(jsonString).extract[FileItemAuthInfo]).recoverWith {
-          case t => Failure(new Exception(s"parse error [${ t.getMessage }] for: $jsonString", t))
-        }
-      } yield authInfo
+        fileItem <- FileItem.fromJson(jsonString)
+      } yield fileItem
     }
   }
 }

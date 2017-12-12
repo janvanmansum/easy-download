@@ -19,7 +19,7 @@ import java.net.URI
 import javax.naming.Context
 import javax.naming.ldap.{ InitialLdapContext, LdapContext }
 
-import nl.knaw.dans.easy.download.components.{ AuthInfoComponent, AuthenticationComponent, BagStoreComponent, HttpWorkerComponent }
+import nl.knaw.dans.easy.download.components.{ AuthenticationComponent, AuthorisationComponent, BagStoreComponent, HttpWorkerComponent }
 
 import scala.util.Try
 
@@ -27,7 +27,7 @@ import scala.util.Try
  * Initializes and wires together the components of this application.
  */
 trait ApplicationWiring extends HttpWorkerComponent
-  with AuthInfoComponent
+  with AuthorisationComponent
   with AuthenticationComponent
   with BagStoreComponent {
 
@@ -40,14 +40,14 @@ trait ApplicationWiring extends HttpWorkerComponent
   override val bagStore: BagStore = new BagStore {
     override val baseUri: URI = new URI(configuration.properties.getString("bag-store.url"))
   }
-  override val authInfo: AuthInfo = new AuthInfo {
+  override val authorisation: Authorisation = new Authorisation {
     override val baseUri: URI = new URI(configuration.properties.getString("auth-info.url"))
   }
 
   override val authentication: Authentication = new Authentication {
     override val ldapUsersEntry: String = configuration.properties.getString("ldap.users-entry")
     override val ldapProviderUrl: String = configuration.properties.getString("ldap.provider.url")
-    override val ldapContext: Try[LdapContext] = Try {
+    override val adminLdapContext: Try[LdapContext] = Try {
       val env = new java.util.Hashtable[String, String] {
         put(Context.SECURITY_AUTHENTICATION, "simple")
         put(Context.SECURITY_PRINCIPAL, configuration.properties.getString("ldap.securityPrincipal"))
@@ -57,6 +57,6 @@ trait ApplicationWiring extends HttpWorkerComponent
       }
       new InitialLdapContext(env, null)
     }
-    logger.info(s"ldapContext = $ldapContext") // TODO how to fail at service startup?
+    logger.info(s"ldapContext = $adminLdapContext") // TODO how to fail at service startup?
   }
 }
