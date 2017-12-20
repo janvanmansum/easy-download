@@ -19,7 +19,6 @@ import java.net.URI
 import java.nio.file.{ Path, Paths }
 import java.util.UUID
 
-import com.typesafe.scalalogging.Logger
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.eclipse.jetty.http.HttpStatus._
 import org.scalamock.scalatest.MockFactory
@@ -27,7 +26,6 @@ import org.scalatra.auth.strategy.BasicAuthStrategy.BasicAuthRequest
 import org.scalatra.test.scalatest.ScalatraSuite
 
 import scala.util.Success
-import org.slf4j.{Logger => Underlying}
 
 class ServletSpec extends TestSupportFixture with ServletFixture
   with ScalatraSuite
@@ -46,13 +44,8 @@ class ServletSpec extends TestSupportFixture with ServletFixture
       addProperty("ark.name-assigning-authority-number", naan)
     })
   }
-  private val mockedLogger = mock[Underlying]
-  (mockedLogger.isInfoEnabled: () => Boolean) expects() anyNumberOfTimes() returning true
-  (mockedLogger.info(_ : String)) expects "File Download Servlet running..."
 
-  addServlet(new EasyDownloadServlet(app){
-    override lazy val logger: Logger = Logger(mockedLogger)
-  }, "/*")
+  addServlet(new EasyDownloadServlet(app), "/*")
 
   private def expectDownloadStream(path: Path) = {
     (app.http.copyHttpStream(_: URI)) expects new URI(s"http://localhost:20110/bags/$uuid/$path") once()
@@ -98,17 +91,16 @@ class ServletSpec extends TestSupportFixture with ServletFixture
 
   it should "report invalid authorisation results" in {
     val path = Paths.get("some.file")
-    val expectedHttpResponse = s"""{
-       |  "itemId":"$uuid/$path",
-       |  "owner":"someone",
-       |  "dateAvailable":"1992-07-30",
-       |  "accessibleTo":"invalidValue",
-       |  "visibleTo":"ANONYMOUS"
-       |}""".stripMargin
+    val expectedHttpResponse =
+      s"""{
+         |  "itemId":"$uuid/$path",
+         |  "owner":"someone",
+         |  "dateAvailable":"1992-07-30",
+         |  "accessibleTo":"invalidValue",
+         |  "visibleTo":"ANONYMOUS"
+         |}""".stripMargin
     expectAuthorisation(path) returning Success(expectedHttpResponse)
     expectAuthentication() returning Success(None)
-    (mockedLogger.isErrorEnabled: () => Boolean) expects() anyNumberOfTimes() returning true
-    (mockedLogger.error(_ : String, _: Throwable)) expects (s"Parse error [No value found for 'invalidValue'] for: $expectedHttpResponse",*)
     get(s"ark:/$naan/$uuid/some.file") {
       // logged message shown in AuthorisationSpec
       body shouldBe s"not expected exception"
@@ -156,15 +148,6 @@ class ServletSpec extends TestSupportFixture with ServletFixture
     expectAuthentication() returning Success(None)
     get(s"ark:/$naan/1-2-3-4-5-6/some.file") {
       body shouldBe "Invalid UUID string: 1-2-3-4-5-6"
-      status shouldBe BAD_REQUEST_400
-    }
-  }
-
-  it should "report invalid path (can't test with scalatra)" ignore {
-    // Scalatra throws IllegalArgumentException on URI before calling EasyDownloadServlet.get
-    // this way we can't test exceptions thrown by Paths.get in EasyDownloadServlet.getPath
-    get(s"ark:/$naan/$uuid/s\0me.file") {
-      body shouldBe "Illegal character in path at index 73: http://localhost:50327/ark:/123456/3b6694ec-fb4c-4a49-9a37-8976616a45dc/s\0me.file"
       status shouldBe BAD_REQUEST_400
     }
   }
