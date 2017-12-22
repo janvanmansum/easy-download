@@ -20,7 +20,7 @@ import java.nio.file.Paths
 import java.util.UUID
 
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
-import org.eclipse.jetty.http.HttpStatus.{ NOT_FOUND_404, REQUEST_TIMEOUT_408, SERVICE_UNAVAILABLE_503 }
+import org.eclipse.jetty.http.HttpStatus._
 import org.scalatra._
 import org.scalatra.auth.strategy.BasicAuthStrategy.BasicAuthRequest
 
@@ -38,22 +38,24 @@ class EasyDownloadServlet(app: EasyDownloadApp) extends ScalatraServlet with Deb
   }
 
   get(s"/ark:/$naan/:uuid/*") {
-    (getUUID, getPath, getUser) match {
+    val authRequest = new BasicAuthRequest(request)
+    val userName = { Option(authRequest.username).getOrElse("ANONYMOUS") }
+    logger.info(s"file download requested by $userName for $params")
+
+    val result = (getUUID, getPath, app.authenticate(authRequest)) match {
       case (Success(uuid), Success(Some(path)), Success(user)) => respond(s"$uuid/$path", app.downloadFile(uuid, path, user, () => response.outputStream))
       case (Success(_), Success(None), _) => BadRequest("file path is empty")
+      case (Failure(t), _, _) => BadRequest(t.getMessage) // invalid uuid
+      case (_, Failure(t), _) => BadRequest(t.getMessage) // invalid path
       case (_, _, Failure(InvalidUserPasswordException(_, _))) => Unauthorized()
       case (_, _, Failure(AuthenticationNotAvailableException(_))) => ServiceUnavailable("Authentication service not available, try anonymous download")
       case (_, _, Failure(AuthenticationTypeNotSupportedException(_))) => BadRequest("Only anonymous download or basic authentication supported")
-      case (Failure(t), _, _) => BadRequest(t.getMessage) // invalid uuid
-      case (_, Failure(t), _) => BadRequest(t.getMessage) // invalid path
-      case _ =>
-        logger.error(s"not expected request: $params")
+      case (_, _, Failure(t)) =>
+        logger.error(s"not expected exception", t)
         InternalServerError("not expected exception")
     }
-  }
-
-  private def getUser = {
-    app.authenticate(new BasicAuthRequest(request))
+    logger.info(s"returned ${response.status.line} to $userName for $params")
+    result
   }
 
   private def getUUID = Try {
