@@ -22,7 +22,6 @@ import com.google.common.net.UrlEscapers
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 
 import scala.collection.JavaConverters._
-import scala.util.{ Failure, Success, Try }
 import scalaj.http.HttpResponse
 
 package object download extends DebugEnhancedLogging {
@@ -53,16 +52,6 @@ package object download extends DebugEnhancedLogging {
 
   def escapePath(path: Path): String = {
     path.asScala.map(_.toString).map(pathEscaper.escape).mkString("/")
-  }
-
-  implicit class TryExtensions2[T](val t: Try[T]) extends AnyVal {
-    // TODO candidate for dans-scala-lib
-    def unsafeGetOrThrow: T = {
-      t match {
-        case Success(value) => value
-        case Failure(throwable) => throw throwable
-      }
-    }
   }
 }
 
