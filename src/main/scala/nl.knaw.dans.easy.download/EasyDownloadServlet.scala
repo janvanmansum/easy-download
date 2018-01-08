@@ -54,7 +54,7 @@ class EasyDownloadServlet(app: EasyDownloadApp) extends ScalatraServlet with Deb
         logger.error(s"not expected exception", t)
         InternalServerError("not expected exception")
     }
-    logger.info(s"returned ${response.status.line} to $userName for $params")
+    logger.info(s"returned ${ result.status } (${ result.body }) to $userName for $params")
     result
   }
 

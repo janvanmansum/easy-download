@@ -44,7 +44,6 @@ class ServletSpec extends TestSupportFixture with ServletFixture
       addProperty("ark.name-assigning-authority-number", naan)
     })
   }
-
   addServlet(new EasyDownloadServlet(app), "/*")
 
   private def expectDownloadStream(path: Path) = {
@@ -87,7 +86,6 @@ class ServletSpec extends TestSupportFixture with ServletFixture
       status shouldBe OK_200
     }
   }
-
 
   it should "report invalid authorisation results" in {
     val path = Paths.get("some.file")
@@ -163,7 +161,7 @@ class ServletSpec extends TestSupportFixture with ServletFixture
   it should "report wrong naan" in {
     get(s"ark:/$naan$naan/$uuid/") {
       body shouldBe
-        s"""Requesting "GET /ark:/$naan$naan/$uuid/" on servlet "" but only have: <ul><li>GET /</li><li>GET /ark:/$naan/:uuid/*</li></ul>
+        s"""Requesting "GET \\/ark:\\/$naan$naan\\/$uuid\\/" on servlet "" but only have: <ul><li>GET /</li><li>GET /ark:/$naan/:uuid/*</li></ul>
            |""".stripMargin
       status shouldBe NOT_FOUND_404
     }
