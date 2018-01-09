@@ -22,10 +22,9 @@ import nl.knaw.dans.easy.download.NotAccessibleException
 import nl.knaw.dans.easy.download.components.RightsFor._
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
-import org.json4s.JsonAST.{ JNull, JString }
 import org.json4s._
-import org.json4s.native.JsonMethods.parse
 import org.json4s.ext.{ EnumNameSerializer, JodaTimeSerializers }
+import org.json4s.native.JsonMethods.parse
 
 import scala.util.{ Failure, Success, Try }
 
