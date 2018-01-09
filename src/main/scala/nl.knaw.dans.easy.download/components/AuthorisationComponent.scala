@@ -19,7 +19,7 @@ import java.net.URI
 import java.nio.file.Path
 import java.util.UUID
 
-import nl.knaw.dans.easy.download.escapePath
+import nl.knaw.dans.easy.download._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.json4s.{ DefaultFormats, _ }
 
@@ -40,8 +40,9 @@ trait AuthorisationComponent extends DebugEnhancedLogging {
         f <- Try(escapePath(path))
         uri = baseUri.resolve(s"$bagId/$f")
         jsonString <- http.getHttpAsString(uri)
-        _ = logger.debug(s"auth-info: ${ jsonString.split("\n").map(_.trim).mkString(" ") }")
-        fileItem <- FileItem.fromJson(jsonString)
+        jsonOneLiner = jsonString.toOneLiner
+        _ = logger.debug(s"auth-info: ${ jsonOneLiner }")
+        fileItem <- FileItem.fromJson(jsonOneLiner)
       } yield fileItem
     }
   }

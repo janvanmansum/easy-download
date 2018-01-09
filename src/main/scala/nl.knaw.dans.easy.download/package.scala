@@ -53,5 +53,10 @@ package object download extends DebugEnhancedLogging {
   def escapePath(path: Path): String = {
     path.asScala.map(_.toString).map(pathEscaper.escape).mkString("/")
   }
+
+
+  implicit class RichString(val s: String) extends AnyVal {
+    def toOneLiner: String = s.split("\n").map(_.trim).mkString(" ")
+  }
 }
 

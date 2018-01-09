@@ -19,7 +19,7 @@ import java.io.FileNotFoundException
 import java.util.UUID
 
 import nl.knaw.dans.easy.download.components.RightsFor._
-import nl.knaw.dans.easy.download.{ NotAccessibleException, TestSupportFixture }
+import nl.knaw.dans.easy.download._
 import org.joda.time.DateTime
 
 import scala.util.{ Failure, Success }
@@ -110,7 +110,7 @@ class FileItemSpec extends TestSupportFixture {
          |  "dateAvailable":"1992-07-30",
          |  "accessibleTo":"invalidValue",
          |  "visibleTo":"ANONYMOUS"
-         |}""".stripMargin
+         |}""".stripMargin.toOneLiner
     inside(FileItem.fromJson(input)) {
       case Failure(t) =>
         t.getMessage should startWith ("parse error")
@@ -128,7 +128,7 @@ class FileItemSpec extends TestSupportFixture {
          |  "dateAvailable":"today",
          |  "accessibleTo":"KNOWN",
          |  "visibleTo":"ANONYMOUS"
-         |}""".stripMargin
+         |}""".stripMargin.toOneLiner
     inside(FileItem.fromJson(input)) {
       case Failure(t) =>
         t.getMessage should startWith ("parse error")
