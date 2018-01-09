@@ -112,10 +112,11 @@ class FileItemSpec extends TestSupportFixture {
          |  "visibleTo":"ANONYMOUS"
          |}""".stripMargin
     inside(FileItem.fromJson(input)) {
-      case Failure(t) => t.getMessage shouldBe
-        s"""parse error [class org.json4s.package$$MappingException: No usable value for accessibleTo
-           |No usable value for $$outer
-           |Can't find ScalaSig for class java.lang.Object] for: $input""".stripMargin
+      case Failure(t) =>
+        t.getMessage should startWith ("parse error")
+        t.getMessage should endWith (s" for: $input")
+        t.getMessage should include ("accessibleTo")
+        t.getMessage should include ("invalidValue")
     }
   }
 
@@ -129,9 +130,11 @@ class FileItemSpec extends TestSupportFixture {
          |  "visibleTo":"ANONYMOUS"
          |}""".stripMargin
     inside(FileItem.fromJson(input)) {
-      case Failure(t) => t.getMessage shouldBe
-        s"""parse error [class org.json4s.package$$MappingException: No usable value for dateAvailable
-           |Invalid date format today] for: $input""".stripMargin
+      case Failure(t) =>
+        t.getMessage should startWith ("parse error")
+        t.getMessage should endWith (s" for: $input")
+        t.getMessage should include ("dateAvailable")
+        t.getMessage should include ("today")
     }
   }
 }
