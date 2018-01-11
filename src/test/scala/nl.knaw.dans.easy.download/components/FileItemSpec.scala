@@ -19,7 +19,7 @@ import java.io.FileNotFoundException
 import java.util.UUID
 
 import nl.knaw.dans.easy.download.components.RightsFor._
-import nl.knaw.dans.easy.download.{ NotAccessibleException, TestSupportFixture }
+import nl.knaw.dans.easy.download._
 import org.joda.time.DateTime
 
 import scala.util.{ Failure, Success }
@@ -110,12 +110,13 @@ class FileItemSpec extends TestSupportFixture {
          |  "dateAvailable":"1992-07-30",
          |  "accessibleTo":"invalidValue",
          |  "visibleTo":"ANONYMOUS"
-         |}""".stripMargin
+         |}""".stripMargin.toOneLiner
     inside(FileItem.fromJson(input)) {
-      case Failure(t) => t.getMessage shouldBe
-        s"""parse error [class org.json4s.package$$MappingException: No usable value for accessibleTo
-           |No usable value for $$outer
-           |Can't find ScalaSig for class java.lang.Object] for: $input""".stripMargin
+      case Failure(t) =>
+        t.getMessage should startWith ("parse error")
+        t.getMessage should endWith (s" for: $input")
+        t.getMessage should include ("accessibleTo")
+        t.getMessage should include ("invalidValue")
     }
   }
 
@@ -127,11 +128,13 @@ class FileItemSpec extends TestSupportFixture {
          |  "dateAvailable":"today",
          |  "accessibleTo":"KNOWN",
          |  "visibleTo":"ANONYMOUS"
-         |}""".stripMargin
+         |}""".stripMargin.toOneLiner
     inside(FileItem.fromJson(input)) {
-      case Failure(t) => t.getMessage shouldBe
-        s"""parse error [class org.json4s.package$$MappingException: No usable value for dateAvailable
-           |Invalid date format today] for: $input""".stripMargin
+      case Failure(t) =>
+        t.getMessage should startWith ("parse error")
+        t.getMessage should endWith (s" for: $input")
+        t.getMessage should include ("dateAvailable")
+        t.getMessage should include ("today")
     }
   }
 }
