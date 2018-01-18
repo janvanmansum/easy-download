@@ -55,6 +55,8 @@ package object download extends DebugEnhancedLogging {
   }
 
   implicit class RichString(val s: String) extends AnyVal {
+
+    // TODO candidate for dans-scala-lib
     def toOneLiner: String = s.split("\n").map(_.trim).mkString(" ")
   }
 }
