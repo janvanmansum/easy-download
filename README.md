@@ -31,20 +31,20 @@ HTTP service
 ------------
 
 When started with the sub-command `run-service` a REST API becomes available with HTTP method `GET` only.
-In a path pattern `*` refers to any completion of the path, placeholders for variables start with a colon,
-and optional parts are enclosed in square brackets.
+In a path pattern `*` refers to any completion of the path, placeholders for variables _start_ with a colon,
+and NAAN represents the configured _name assigning authority number_.
 
-Path       | Action
------------|------------------------------------
-`/`        | Return a simple message to indicate that the service is up: "File Download Servlet running..."
-`/:uuid/*` | Return the contents of the file with bag-id `:uuid` and bag local path `*`
+Path                 | Action
+---------------------|------------------------------------
+`/`                  | Return a simple message to indicate that the service is up: "File Download Servlet running..."
+`/ark:/NAAN/:uuid/*` | Return the contents of the file with bag-id `:uuid` and bag local path `*`
 
 
 EXAMPLES
 --------
 
-    curl http://test.dans.knaw.nl:20110/
-    curl http://test.dans.knaw.nl:20110/40594b6d-8378-4260-b96b-13b57beadf7c/data/pakbon.xml
+    curl http://test.dans.knaw.nl:20160/
+    curl -u user:password http://test.dans.knaw.nl:20160/ark:/73189/40594b6d-8378-4260-b96b-13b57beadf7c/data/pakbon.xml
 
 
 INSTALLATION AND CONFIGURATION
@@ -74,8 +74,7 @@ in `cfg/logback.xml`. The available settings are explained in comments in aforem
 ### Security advice
 
 Keep the depending services behind a firewall.
-Only expose the download servlet through a proxy, map for example:
-`http://easy.dans.knaw.nl/ark:/73189/` to `http://localhost:20150/` 
+Only expose the download servlet through a proxy. 
 
 
 BUILDING FROM SOURCE

@@ -19,7 +19,7 @@ import java.util
 import javax.naming.{ AuthenticationException, Context }
 import javax.naming.directory.SearchControls.SUBTREE_SCOPE
 import javax.naming.directory.{ Attribute, SearchControls, SearchResult }
-import javax.naming.ldap.InitialLdapContext
+import javax.naming.ldap.{ InitialLdapContext, LdapContext }
 
 import nl.knaw.dans.easy.download.{ AuthenticationNotAvailableException, AuthenticationTypeNotSupportedException, InvalidUserPasswordException }
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
@@ -64,7 +64,7 @@ trait AuthenticationComponent extends DebugEnhancedLogging {
         val searchControls = new SearchControls() {
           setSearchScope(SUBTREE_SCOPE)
         }
-        managed(new InitialLdapContext(connectionProperties, null))
+        managed(getContext(connectionProperties))
           .map(_.search(ldapUsersEntry, query, searchControls))
           .tried
       }.recoverWith {
@@ -96,6 +96,10 @@ trait AuthenticationComponent extends DebugEnhancedLogging {
         userAttributes = searchResult.getAttributes.getAll.asScala.map(toTuples).toMap
         _ <- userIsActive(userAttributes)
       } yield User(userName, userAttributes.getOrElse("easyGroups", Seq.empty))
+    }
+
+    protected def getContext(connectionProperties: util.Hashtable[String, String]): LdapContext = {
+      new InitialLdapContext(connectionProperties, null)
     }
   }
 }

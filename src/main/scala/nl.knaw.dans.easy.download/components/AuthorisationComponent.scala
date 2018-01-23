@@ -21,7 +21,7 @@ import java.util.UUID
 
 import nl.knaw.dans.easy.download._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
-import org.json4s.{ DefaultFormats, _ }
+import org.json4s._
 
 import scala.util.Try
 
