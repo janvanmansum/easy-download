@@ -18,18 +18,20 @@ package nl.knaw.dans.easy.download.components
 import java.net.URI
 
 import nl.knaw.dans.easy.download.{ HttpStatusException, OutputStreamProvider }
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.io.IOUtils
 import org.eclipse.jetty.http.HttpStatus.OK_200
 
 import scala.util.{ Failure, Success, Try }
 import scalaj.http.{ Http, HttpResponse }
 
-trait HttpWorkerComponent {
+trait HttpWorkerComponent extends DebugEnhancedLogging {
 
   val http: HttpWorker
 
   trait HttpWorker {
-    def copyHttpStream(uri: URI): OutputStreamProvider => Try[Unit] = { outputStreamProducer =>
+    def copyHttpStream(uri: URI): OutputStreamProvider => Try[Unit] = {
+      outputStreamProducer =>
       val response = Http(uri.toString).method("GET").exec {
         case (OK_200, _, is) => IOUtils.copyLarge(is, outputStreamProducer())
         case _ => // do nothing

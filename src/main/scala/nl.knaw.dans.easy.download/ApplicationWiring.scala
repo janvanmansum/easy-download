@@ -39,13 +39,17 @@ trait ApplicationWiring extends HttpWorkerComponent
 
   override val bagStore: BagStore = new BagStore {
     override val baseUri: URI = new URI(configuration.properties.getString("bag-store.url"))
+    logger.info(s"BagStore: baseUri = $baseUri")
   }
   override val authorisation: Authorisation = new Authorisation {
     override val baseUri: URI = new URI(configuration.properties.getString("auth-info.url"))
+    logger.info(s"Authorisation: baseUri = $baseUri")
   }
 
   override val authentication: Authentication = new Authentication {
     override val ldapUsersEntry: String = configuration.properties.getString("ldap.users-entry")
     override val ldapProviderUrl: String = configuration.properties.getString("ldap.provider.url")
+    logger.info(s"Authentication: ldapProviderUrl = $ldapProviderUrl")
+    logger.info(s"Authentication: ldapUsersEntry = $ldapUsersEntry")
   }
 }
