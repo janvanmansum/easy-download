@@ -137,4 +137,25 @@ class FileItemSpec extends TestSupportFixture {
         t.getMessage should include ("today")
     }
   }
+
+  it should "convert different order of fields" in {
+    inside(FileItem.fromJson(
+      s"""{
+         |  "itemId":"$uuid/some.file",
+         |  "owner":"someone",
+         |  "dateAvailable":"1992-07-30",
+         |  "accessibleTo":"KNOWN",
+         |  "visibleTo":"ANONYMOUS"
+         |}""".stripMargin
+    )) { case Success(_) =>}
+    inside(FileItem.fromJson(
+      s"""{
+         |  "accessibleTo":"KNOWN",
+         |  "itemId":"$uuid/some.file",
+         |  "owner":"someone",
+         |  "dateAvailable":"1992-07-30",
+         |  "visibleTo":"ANONYMOUS"
+         |}""".stripMargin
+    )) { case Success(_) =>}
+  }
 }

@@ -17,6 +17,7 @@ package nl.knaw.dans.easy.download
 
 import java.nio.file.{ Files, Path, Paths }
 
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.configuration.PropertiesConfiguration
 import resource.managed
 
@@ -24,14 +25,16 @@ import scala.io.Source
 
 case class Configuration(version: String, properties: PropertiesConfiguration)
 
-object Configuration {
+object Configuration extends DebugEnhancedLogging {
 
   def apply(home: Path): Configuration = {
+    logger.info(s"home: $home")
     val cfgPath = Seq(
       Paths.get(s"/etc/opt/dans.knaw.nl/easy-download/"),
       home.resolve("cfg"))
       .find(Files.exists(_))
       .getOrElse { throw new IllegalStateException("No configuration directory found") }
+    logger.info(s"cfgPath: $cfgPath")
 
     new Configuration(
       version = managed(Source.fromFile(home.resolve("bin/version").toFile)).acquireAndGet(_.mkString),
