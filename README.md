@@ -20,11 +20,11 @@ ARGUMENTS
 
     Options:
 
-      --help      Show help message
-      --version   Show version of this program
+      -h, --help      Show help message
+      -v, --version   Show version of this program
     
     Subcommand: run-service - Starts EASY Download as a daemon that services HTTP requests
-      --help   Show help message
+      -h, --help   Show help message
     ---
 
 HTTP service
