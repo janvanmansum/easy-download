@@ -23,11 +23,12 @@ import org.apache.commons.configuration.PropertiesConfiguration
 import org.eclipse.jetty.http.HttpStatus._
 import org.scalamock.scalatest.MockFactory
 import org.scalatra.auth.strategy.BasicAuthStrategy.BasicAuthRequest
+import org.scalatra.test.EmbeddedJettyContainer
 import org.scalatra.test.scalatest.ScalatraSuite
 
 import scala.util.Success
 
-class ServletSpec extends TestSupportFixture with ServletFixture
+class ServletSpec extends TestSupportFixture with EmbeddedJettyContainer
   with ScalatraSuite
   with MockFactory {
 
