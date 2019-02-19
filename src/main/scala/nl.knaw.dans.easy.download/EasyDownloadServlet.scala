@@ -20,6 +20,7 @@ import java.nio.file.Paths
 import java.util.UUID
 
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
+import nl.knaw.dans.lib.logging.servlet._
 import org.eclipse.jetty.http.HttpStatus._
 import org.scalatra._
 import org.scalatra.auth.strategy.BasicAuthStrategy.BasicAuthRequest
@@ -27,14 +28,14 @@ import org.scalatra.auth.strategy.BasicAuthStrategy.BasicAuthRequest
 import scala.util.{ Failure, Success, Try }
 import scalaj.http.HttpResponse
 
-class EasyDownloadServlet(app: EasyDownloadApp) extends ScalatraServlet with DebugEnhancedLogging {
+class EasyDownloadServlet(app: EasyDownloadApp) extends ScalatraServlet with ServletLogger with PlainLogFormatter with DebugEnhancedLogging {
   logger.info("File Download Servlet running...")
 
   private val naan = app.configuration.properties.getString("ark.name-assigning-authority-number")
 
   get("/") {
     contentType = "text/plain"
-    Ok("EASY Download Service running...")
+    Ok("EASY Download Service running...").logResponse
   }
 
   get(s"/ark:/$naan/:uuid/*") {
@@ -55,7 +56,7 @@ class EasyDownloadServlet(app: EasyDownloadApp) extends ScalatraServlet with Deb
         InternalServerError("not expected exception")
     }
     logger.info(s"returned ${ result.status } (${ result.body }) to $userName for $params")
-    result
+    result.logResponse
   }
 
   private def getUUID = Try {
