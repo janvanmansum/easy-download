@@ -5,6 +5,7 @@ Description=EASY Download Service
 ExecStart=/bin/java \
    -Dlogback.configurationFile=/etc/opt/dans.knaw.nl/easy-download/logback-service.xml \
    -Dapp.home=/opt/dans.knaw.nl/easy-download \
+   -Dorg.scalatra.environment="production" \
    -jar /opt/dans.knaw.nl/easy-download/bin/easy-download.jar run-service
 
 # Java returns 143 even if the SIGTERM was handled correctly.
